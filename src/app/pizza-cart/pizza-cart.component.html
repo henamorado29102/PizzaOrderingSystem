@@ -1,44 +1,23 @@
-<div *ngIf="cart.length > 0; else noPizzas">
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Type</th>
-          <th>Tomatoes</th>
-          <th>Onion</th>
-          <th>Bell Pepper</th>
-          <th>Mushrooms</th>
-          <th>Pineapple</th>
-          <th>Sausage</th>
-          <th>Pepperoni</th>
-          <th>Barbecue Chicken</th>
-          <th>Price</th>
-          <th>Price Before Offer</th>
-          <th>Offer</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let pizza of cart; let i = index">
-          <td>{{ i + 1 }}</td>
-          <td>{{ pizza.size }}</td>
-          <td>{{ pizza.toppings.includes('Tomatoes') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Onion') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Bell Pepper') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Mushrooms') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Pineapple') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Sausage') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Pepperoni') ? 'x' : '' }}</td>
-          <td>{{ pizza.toppings.includes('Barbecue Chicken') ? 'x' : '' }}</td>
-          <td>{{ pizza.price.toFixed(2) }}</td>
-          <td><p class="strikethrough"> {{ pizza.oldPrice == 0 ? '' : pizza.oldPrice.toFixed(2) }}</p></td>
-          <td>{{ pizza.offer }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<div *ngIf="cart?.pizzas?.length">
+  <table>
+    <thead>
+      <tr>
+        <th *ngFor="let th of tableHeader"> {{ th.header}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let pizza of cart?.pizzas; let i = index">
+        <td>{{ i + 1 }}</td>
+        <td>{{ pizza.size.description }}</td>        
+        <td>{{ pizza.price.toFixed(2) }}</td>
+        <td>{{ pizza.beforePrice }}</td>
+        <td>{{ pizza.offer }}</td>
+        <td *ngFor="let topp of getToppings(pizza)"> {{ topp}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 <ng-template #noPizzas>
   <div class="centered">No pizzas in the cart.</div>
 </ng-template>
-
-  
