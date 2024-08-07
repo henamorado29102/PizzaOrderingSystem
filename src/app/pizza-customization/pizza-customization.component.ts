@@ -1,131 +1,105 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import {
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { PizzaCartComponent } from '../pizza-cart/pizza-cart.component';
-import { PizzaOrder } from '../models/pizza-order.model'; // Import the PizzaOrder model
+import { Pizza } from '../models/pizza';
+import { Size } from '../models/size';
+import { ToppingType } from '../models/topping-type';
+import { Topping } from '../models/topping';
+import { ToppingTypesService } from '../Services/topping-types.service';
+import { SizesService } from '../Services/sizes.service';
+import { ToppingsService } from '../Services/toppings.service';
+import { SIZE_DATA } from '../Services/static-data';
 
 @Component({
   selector: 'app-pizza-customization',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    PizzaCartComponent
-  ],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, PizzaCartComponent],
   templateUrl: './pizza-customization.component.html',
   styleUrls: ['./pizza-customization.component.css'],
 })
-export class PizzaCustomizationComponent {
-  sizes = [
-    { size: 'Small', price: 5 },
-    { size: 'Medium', price: 7 },
-    { size: 'Large', price: 8 },
-    { size: 'Extra Large', price: 9 }
-  ];
+export class PizzaCustomizationComponent implements OnInit {
+  @Output() onAddPizzaToChart: EventEmitter<Pizza> = new EventEmitter();
+  selectedSize: string = '';
+  sizes: Size[] = [];
+  toppingTypes: ToppingType[] = [];
+  toppings: Topping[] = [];
+  pizzaForm: FormGroup;
 
-  selectedSize = this.sizes[0].size;
-
-  vegetarianToppings: { name: string, price: number }[] = [
-    { name: 'Tomatoes', price: 1 },
-    { name: 'Onion', price: 0.5 },
-    { name: 'Bell Pepper', price: 1 },
-    { name: 'Mushrooms', price: 1.2 },
-    { name: 'Pineapple', price: 0.75 }
-  ];
-
-  nonVegetarianToppings: { name: string, price: number }[] = [
-    { name: 'Sausage', price: 1 },
-    { name: 'Pepperoni', price: 2 },
-    { name: 'Barbecue Chicken', price: 3 }
-  ];
-
-  selectedToppings: string[] = [];
-  cart: PizzaOrder[] = [];
-
-  onToppingChange(event: any) {
-    const topping = event.target.value;
-    if (event.target.checked) {
-      this.selectedToppings.push(topping);
-    } else {
-      const index = this.selectedToppings.indexOf(topping);
-      if (index > -1) {
-        this.selectedToppings.splice(index, 1);
-      }
-    }
-  }
-
-  calculatePrice(size: string, toppings: string[]): { price: number, offer: string, oldPrice: number } {
-    const selectedSizeObj = this.sizes.find(s => s.size === size);
-    const sizePrice = selectedSizeObj ? selectedSizeObj.price : 0;
-    const toppingsPrice = toppings.reduce((total, topping) => {
-      const vegTopping = this.vegetarianToppings.find(t => t.name === topping);
-      const nonVegTopping = this.nonVegetarianToppings.find(t => t.name === topping);
-      return total + (vegTopping ? vegTopping.price : nonVegTopping ? nonVegTopping.price : 0);
-    }, 0);
-
-    let price = sizePrice + toppingsPrice;
-    let offer = '';
-    let oldPrice = 0;
-
-
-    if (size === 'Medium' && toppings.length === 2) {
-      oldPrice = price;
-      price = 5;
-      offer = 'Offer 1';
-    }
-
-    else if (size === 'Large' && toppings.filter(t => t === 'Pepperoni' || t === 'Barbecue Chicken').length >= 2) {
-      oldPrice = price;
-      price = price * 0.5;
-      offer = 'Offer 3';
-    }
-
-    return { price, offer, oldPrice };
-  }
-
-  applyOffers() {
+  constructor(
+    private sizesService: SizesService,
+    private toppingTypesService: ToppingTypesService,
+    private topppingsService: ToppingsService,
+    private formBuilder: FormBuilder
+  ) {
     
-    let mediumPizzaCount = 0;
-    let mediumPizzaIndex = 0;
-
-    this.cart.forEach((pizza, index) => {
-      const { price, offer, oldPrice } = this.calculatePrice(pizza.size, pizza.toppings);
-      pizza.price = price;
-      pizza.offer = offer;
-      pizza.oldPrice = oldPrice;
-      if (pizza.size === 'Medium' && pizza.toppings.length == 4) {
-         mediumPizzaCount++;
-         if (mediumPizzaCount == 1){
-            mediumPizzaIndex = index;
-         }         
-      }
-
-      if(mediumPizzaCount == 2){
-        this.cart[mediumPizzaIndex].oldPrice = this.cart[mediumPizzaIndex].price;
-        this.cart[mediumPizzaIndex].price = 9;
-        this.cart[mediumPizzaIndex].offer = 'Offer 2';        
-        pizza.price = 9;
-        pizza.offer = 'Offer 2';;
-        pizza.oldPrice = price;
-        mediumPizzaCount = 0;
-      }
+    this.pizzaForm = this.formBuilder.group({
+      size: [Validators.required],
+      toppings: this.formBuilder.array([]), 
     });
   }
 
-  addToCart() {
-    const selectedPizza: PizzaOrder = {
-      size: this.selectedSize,
-      toppings: [...this.selectedToppings],
-      price: 0,
-      offer: '',
-      oldPrice: 0
-    };
-
-    this.cart.push(selectedPizza);
-    this.applyOffers();
-
-    // Reset the form
-    this.selectedSize = this.sizes[0].size;
-    this.selectedToppings = [];
+  ngOnInit(): void {
+    this.sizes = this.sizesService.getAllSizes();
+    this.toppingTypes = this.toppingTypesService.getToppingTypes();
+    this.toppings = this.topppingsService.getToppings();
+    this.selectedSize = this.sizes[0].id; 
+    if (this.sizes.length > 0) {
+      this.pizzaForm.get('size')?.setValue(this.selectedSize);
+    }  
   }
+  onToppingChange(toppingId: string, event: Event) {
+    const isChecked = (event.target as HTMLInputElement).checked;
+    const toppingsFormArray = this.pizzaForm.get('toppings') as FormArray;
+  
+    if (isChecked) {
+      toppingsFormArray.push(this.formBuilder.control(toppingId));
+    } else {
+      const index = toppingsFormArray.controls.findIndex(x => x.value === toppingId);
+      toppingsFormArray.removeAt(index);
+    }
+  }
+
+  addToCart() {
+    const formValue = this.pizzaForm.value;
+    const selectedSize = this.sizes.find(size => size.id === formValue.size);
+    const selectedToppings = formValue.toppings.map((toppingId: string) =>
+      this.toppings.find(topping => topping.id === toppingId)
+    ).filter((topping: Topping | undefined): topping is Topping => !!topping);
+
+    if (!selectedSize) {
+      console.error('Selected size not found!');
+      return;
+    }
+
+    const pizza: Pizza = {
+      size: selectedSize,
+      toppings: selectedToppings,
+      price: 0,
+      beforePrice: 0,
+      offer: ""
+    };
+    this.onAddPizzaToChart.emit(pizza);
+    this.resetPizzaForm()
+  }
+
+  resetPizzaForm() {
+    this.pizzaForm.get('size')?.setValue(this.sizes[0]?.id);
+
+    const toppingsFormArray = this.pizzaForm.get('toppings') as FormArray;
+    toppingsFormArray.clear();
+
+    const checkboxes = document.querySelectorAll('.topping input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      (checkbox as HTMLInputElement).checked = false;
+    });
+  }
+
 }
